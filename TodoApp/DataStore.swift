@@ -12,6 +12,7 @@ import Combine
 struct Task: Identifiable, Codable {
     var id = String()
     var name = String()
+    var created = Date()
 }
 
 class TaskDataStore: ObservableObject  {
@@ -35,7 +36,7 @@ class TaskDataStore: ObservableObject  {
     }
     
     public func add(task: String) {
-        tasks.append(Task(id:UUID().uuidString.lowercased(), name: task))
+        tasks.append(Task(id:UUID().uuidString.lowercased(), name: task, created: .now))
         save()
     }
     

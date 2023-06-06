@@ -21,10 +21,12 @@ struct ContentView: View {
     var timer : Timer? = nil;
     var commandHandler = CommandHandler()
     let font = Font.system(.body, design: .monospaced)
+    var dateFormatter = DateFormatter()
     
     @Environment(\.colorScheme) var colorScheme
     
     init() {
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
         if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
             let fileUrl = dir.appendingPathComponent("data.json")
             taskStore.setUrl(url: fileUrl)
@@ -41,6 +43,8 @@ struct ContentView: View {
             }
         }
     }
+    
+    
     
     var body: some View {
             VStack {
@@ -62,18 +66,22 @@ struct ContentView: View {
                     }
                 ScrollView(.vertical) {
                     LazyVGrid(columns: [
-                        GridItem(.fixed(35)),
+                        GridItem(.fixed(30)),
+                        GridItem(.fixed(130)),
                         GridItem(.adaptive(minimum: 500, maximum: .infinity))
+                        
                     ]){
                         ForEach(taskStore.tasks) { task in
                             
                             let id = String(task.id.dropLast(33)).lowercased()
+                            let date = dateFormatter.string(from: task.created)
                             GridRow {
-                                Text("\(id)").foregroundColor(.secondary)
+                                Text("\(id)").foregroundColor(.secondary).font(font)
+                                Text("\(date)").font(font).foregroundColor(.secondary)
                                 Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
                             }.onTapGesture {
                                 taskStore.remove(id: task.id)
-                            }.font(font)
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: 300, alignment: .topLeading)
@@ -81,15 +89,17 @@ struct ContentView: View {
                 ScrollView(.vertical) {
                     LazyVGrid(columns: [
                         GridItem(.fixed(35)),
+                        GridItem(.fixed(130)),
                         GridItem(.adaptive(minimum: 500, maximum: .infinity))
                     ]){
                         ForEach(taskStore.finished) { task in
-                            
+                            let date = dateFormatter.string(from: task.created)
                             let id = String(task.id.dropLast(33)).lowercased()
                             GridRow {
-                                Text("\(id)").foregroundColor(.secondary)
+                                Text("\(id)").foregroundColor(.secondary).font(font)
+                                Text("\(date)").font(font).foregroundColor(.secondary)
                                 Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
-                            }.font(font).strikethrough()
+                            }.strikethrough()
                         }
                     }.frame(maxWidth: .infinity, maxHeight: 300, alignment: .topLeading)
                 }.frame(maxHeight: 300).background(.background)
