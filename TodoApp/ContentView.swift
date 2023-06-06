@@ -21,43 +21,80 @@ struct ContentView: View {
     var timer : Timer? = nil;
     var commandHandler = CommandHandler()
     let font = Font.system(.body, design: .monospaced)
-    var addTaskBar : some View {
-        HStack {
-            TextField ("Add Task: ", text: self.$newTask).font(font).onSubmit {
-                addNewTask()
-            }.focused($focus, equals: .newTask)
-                .onChange(of: newTask, perform: {newValue in
-                    if (newValue == ":") {
-                        newTask = "";
-                        commandInFocus = true;
-                        command = ""
-                        focus = .command
-                    }
-                })
-            Button(action: self.addNewTask, label: {
-                Text("Add New").font(font)
-            })
+    
+    @Environment(\.colorScheme) var colorScheme
+    
+    init() {
+        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let fileUrl = dir.appendingPathComponent("data.json")
+            taskStore.setUrl(url: fileUrl)
+            
+            if FileManager.default.fileExists(atPath: fileUrl.path(percentEncoded: false)) {
+                do {
+                    let contents = try String(contentsOf: fileUrl, encoding: .utf8);
+                    taskStore.load(jsonString: contents)
+                } catch {
+                    messageStore.message = "Could not load the file"
+                }
+            } else {
+                print("File does not exist! \(fileUrl.absoluteString)")
+            }
         }
     }
     
-    var tasks = ["Task 1", "Task 2", "Task 3"];
     var body: some View {
             VStack {
-                addTaskBar
-                List {
-                    ForEach(taskStore.tasks) { task in
-                        Text(task.name).onTapGesture {
-                            taskStore.remove(id: task.id)
-                        }.font(font)
+                    HStack {
+                        TextField ("Add Task: ", text: self.$newTask).font(font).onSubmit {
+                            addNewTask()
+                        }.focused($focus, equals: .newTask)
+                            .onChange(of: newTask, perform: {newValue in
+                                if (newValue == ":") {
+                                    newTask = "";
+                                    commandInFocus = true;
+                                    command = ""
+                                    focus = .command
+                                }
+                            })
+                        Button(action: self.addNewTask, label: {
+                            Text("Add New").font(font)
+                        })
                     }
-                }
-                List {
-                    ForEach(taskStore.finished) {
-                        Text($0.name).strikethrough().font(font)
+                ScrollView(.vertical) {
+                    LazyVGrid(columns: [
+                        GridItem(.fixed(100)),
+                        GridItem(.adaptive(minimum: 500, maximum: .infinity))
+                    ]){
+                        ForEach(taskStore.tasks) { task in
+                            
+                            let id = String(task.id.dropLast(33)).lowercased()
+                            GridRow {
+                                Text("\(id)").foregroundColor(.secondary)
+                                Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
+                            }.onTapGesture {
+                                taskStore.remove(id: task.id)
+                            }.font(font)
+                        }
                     }
-                }
+                    .frame(maxWidth: .infinity, maxHeight: 300, alignment: .topLeading)
+                }.frame(maxHeight: 200).background(.background)
+                ScrollView(.vertical) {
+                    LazyVGrid(columns: [
+                        GridItem(.fixed(100)),
+                        GridItem(.adaptive(minimum: 500, maximum: .infinity))
+                    ]){
+                        ForEach(taskStore.finished) { task in
+                            
+                            let id = String(task.id.dropLast(33)).lowercased()
+                            GridRow {
+                                Text("\(id)").foregroundColor(.secondary)
+                                Text("\(task.name)")
+                            }.font(font).strikethrough()
+                        }
+                    }.frame(maxWidth: .infinity, maxHeight: 300, alignment: .topLeading)
+                }.frame(maxHeight: 300).background(.background)
                 if (!messageStore.message.isEmpty) {
-                    Text(messageStore.message).bold().foregroundColor(.red).font(font).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(messageStore.message).bold().foregroundColor(.accentColor).font(font).frame(maxWidth: .infinity, alignment: .leading)
                    
                 }
                 if (commandInFocus) {
@@ -65,7 +102,7 @@ struct ContentView: View {
                         .onSubmit {
                             handleCommand()
                         }.font(font).onChange(of: command) {newCommand in
-                            if (newCommand.elementsEqual("q")) {
+                            if (newCommand.elementsEqual(" ")) {
                                 setFocus(newFocus: .newTask)
                             }
                         }
