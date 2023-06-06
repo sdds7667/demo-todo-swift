@@ -62,7 +62,7 @@ struct ContentView: View {
                     }
                 ScrollView(.vertical) {
                     LazyVGrid(columns: [
-                        GridItem(.fixed(100)),
+                        GridItem(.fixed(35)),
                         GridItem(.adaptive(minimum: 500, maximum: .infinity))
                     ]){
                         ForEach(taskStore.tasks) { task in
@@ -80,7 +80,7 @@ struct ContentView: View {
                 }.frame(maxHeight: 200).background(.background)
                 ScrollView(.vertical) {
                     LazyVGrid(columns: [
-                        GridItem(.fixed(100)),
+                        GridItem(.fixed(35)),
                         GridItem(.adaptive(minimum: 500, maximum: .infinity))
                     ]){
                         ForEach(taskStore.finished) { task in
@@ -88,7 +88,7 @@ struct ContentView: View {
                             let id = String(task.id.dropLast(33)).lowercased()
                             GridRow {
                                 Text("\(id)").foregroundColor(.secondary)
-                                Text("\(task.name)")
+                                Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
                             }.font(font).strikethrough()
                         }
                     }.frame(maxWidth: .infinity, maxHeight: 300, alignment: .topLeading)
