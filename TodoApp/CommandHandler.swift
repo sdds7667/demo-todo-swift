@@ -27,13 +27,62 @@ struct ActionResult {
             focus: .newTask
         )
     }
+    
+    static func commandWithPrefix(prefix: String) -> ActionResult {
+        return ActionResult(
+            command: prefix,
+            focus: .command
+        );
+    }
+}
+
+func outOfBounds(taskIndex: TaskIndex) -> String {
+    switch (taskIndex) {
+    case let .number(index):
+        return "Index \(index) is out of bounds.";
+    case let .prefix(index):
+        return "Index \(index) not found";
+    }
 }
 
 
 
 
 class CommandHandler {
+    
+    func readId(chars: [Character], index: Int) -> (Int, TaskIndex)? {
+        if let scalar = chars[index].unicodeScalars.first {
+            if (CharacterSet.decimalDigits.contains(scalar)) {
+                // digital index
+                var ind = 0;
+                for si in (index)..<chars.count {
+                    if let digit = Int(String(chars[si])) {
+                        ind = ind * 10 + digit
+                    } else {
+                        return (si, .number(index: ind))
+                    }
+                }
+                return (chars.count, .number(index: ind))
+            } else if (chars[index] == "'") {
+                // string index
+                if (index + 3) >= chars.count {
+                    return nil
+                }
+                var result = ""
+                for si in (index+1)...(index+3) {
+                    result += String(chars[si])
+                }
+                return (index + 4, .prefix(index:result))
+            }
+        }
+        return nil
+    }
+    
     func parse(command: String) -> Action {
+        
+        let chars = Array(command)
+        
+        
         if command.elementsEqual("q"){
             exit(0)
         }
@@ -53,7 +102,26 @@ class CommandHandler {
                 return ReportError(message: "Failed to parse the index of the task")
             }
             return CompleteTask(index: .number(index: index!))
+        } else if (command.starts(with: "p")) {
+            if let (index, taskId) = readId(chars: chars, index: 1) {
+                if (chars[index] == ",") {
+                    
+                    if let newPriority = Int(command.dropFirst(index+1)) {
+                        return UpdatePriority(index:taskId, priority: newPriority)
+                    } else {
+                        return ReportError(message: "Failed to parse the new priority")
+                    }
+                    
+                    
+                } else {
+                    return ReportError(message:"Malformed priority command")
+                }
+            }
+            
         }
+    
+        
+        
         return ReportError(message: "Could not parse \(command)");
     }
 }
@@ -65,43 +133,36 @@ protocol Action {
         
 }
 
+
+struct UpdatePriority: Action {
+    var index: TaskIndex;
+    var priority: Int;
+    
+    func handle(taskStore: TaskDataStore, messageStore: MessageStore) -> ActionResult {
+        if let task = taskStore.taskFromIndex(index: index) {
+            task.priority = priority
+            taskStore.sort()
+            taskStore.save()
+            return ActionResult.newTask()
+        } else {
+            messageStore.showError(message: outOfBounds(taskIndex: index))
+            return ActionResult.commandWithPrefix(prefix: "p")
+        }
+    }
+}
+
 struct CompleteTask: Action {
     var index: TaskIndex;
     
-    
     func handle(taskStore: TaskDataStore, messageStore: MessageStore) -> ActionResult {
-        switch index {
-        case let.number(index):
-            return handleInt(taskStore: taskStore, messageStore: messageStore, index: index)
-        case let.prefix(index):
-            return handleString(taskStore: taskStore, messageStore: messageStore, prefix: index)
-        }
-    }
-    
-    func handleString(taskStore: TaskDataStore, messageStore: MessageStore, prefix: String) -> ActionResult {
-        
-        let taskId = taskStore.idFromPrefix(prefix: prefix);
-        if (taskId == nil) {
-            messageStore.showError(message: "Cannot complete task \(index). Out of bounds")
-            return ActionResult(command: "c", focus: .command)
-        } else {
-            taskStore.remove(id: taskId!)
+        if let taskId = taskStore.idFromTaskIndex(index: index) {
+            taskStore.remove(id: taskId)
             return ActionResult.newTask()
-        }
-    }
-    
-    func handleInt(taskStore: TaskDataStore, messageStore: MessageStore, index: Int) -> ActionResult {
-        let taskId = taskStore.idFromIndex(index: index-1);
-        if (taskId == nil) {
-            messageStore.showError(message: "Cannot complete task \(index). Out of bounds")
-            return ActionResult(command: "c", focus: .command)
         } else {
-            taskStore.remove(id: taskId!)
-            return ActionResult.newTask()
+            messageStore.showError(message: outOfBounds(taskIndex: index))
+            return ActionResult.commandWithPrefix(prefix: "c");
         }
     }
-    
-    
 }
 
 struct ClearFinishedTasks: Action {

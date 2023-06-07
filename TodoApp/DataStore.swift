@@ -9,10 +9,18 @@ import Foundation
 import SwiftUI
 import Combine
 
-struct Task: Identifiable, Codable {
+class Task: Identifiable, Codable {
     var id = String()
     var name = String()
     var created = Date()
+    var priority = 3
+    
+    init(id: String = String(), name: String = String(), created: Date = Date(), priority: Int = 3) {
+        self.id = id
+        self.name = name
+        self.created = created
+        self.priority = priority
+    }
 }
 
 class TaskDataStore: ObservableObject  {
@@ -38,6 +46,12 @@ class TaskDataStore: ObservableObject  {
     public func add(task: String) {
         tasks.append(Task(id:UUID().uuidString.lowercased(), name: task, created: .now))
         save()
+    }
+    
+    public func sort() {
+        tasks.sort { (lhs: Task, rhs: Task) -> Bool in
+            return lhs.priority > rhs.priority
+        }
     }
     
     public func remove(id: String) {
@@ -66,6 +80,23 @@ class TaskDataStore: ObservableObject  {
         return nil;
     }
     
+    public func idFromTaskIndex(index: TaskIndex) -> String? {
+        switch index {
+            case let .number(index):
+                return idFromIndex(index: index-1)
+            case let .prefix(index):
+                return idFromPrefix(prefix: index)
+        }
+    }
+    
+    public func taskFromIndex(index: TaskIndex) -> Task? {
+        if let id = idFromTaskIndex(index: index) {
+            return tasks.first{task in task.id == id}
+        } else {
+            return nil
+        }
+    }
+    
     
     public func setUrl(url: URL) {
         self.url = url;
@@ -77,6 +108,7 @@ class TaskDataStore: ObservableObject  {
     }
     
     public func save() {
+        sort()
         
         if url == nil {
             return

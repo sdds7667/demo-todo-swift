@@ -68,6 +68,7 @@ struct ContentView: View {
                     LazyVGrid(columns: [
                         GridItem(.fixed(30)),
                         GridItem(.fixed(130)),
+                        GridItem(.fixed(15)),
                         GridItem(.adaptive(minimum: 500, maximum: .infinity))
                         
                     ]){
@@ -78,6 +79,7 @@ struct ContentView: View {
                             GridRow {
                                 Text("\(id)").foregroundColor(.secondary).font(font)
                                 Text("\(date)").font(font).foregroundColor(.secondary)
+                                Text("\(task.priority)").font(font).foregroundColor(.secondary)
                                 Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
                             }.onTapGesture {
                                 taskStore.remove(id: task.id)
@@ -90,6 +92,7 @@ struct ContentView: View {
                     LazyVGrid(columns: [
                         GridItem(.fixed(35)),
                         GridItem(.fixed(130)),
+                        GridItem(.fixed(15)),
                         GridItem(.adaptive(minimum: 500, maximum: .infinity))
                     ]){
                         ForEach(taskStore.finished) { task in
@@ -98,6 +101,7 @@ struct ContentView: View {
                             GridRow {
                                 Text("\(id)").foregroundColor(.secondary).font(font)
                                 Text("\(date)").font(font).foregroundColor(.secondary)
+                                Text("\(task.priority)").font(font).foregroundColor(.secondary)
                                 Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
                             }.strikethrough()
                         }
