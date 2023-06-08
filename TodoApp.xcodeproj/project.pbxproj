@@ -37,6 +37,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D606ED852A315CA200A253D6 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		D606ED862A315D1600A253D6 /* TodoAppDemo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = TodoAppDemo.png; sourceTree = "<group>"; };
 		D6FA6B622A2F3C03001EE159 /* TodoApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TodoApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6FA6B652A2F3C03001EE159 /* TodoAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoAppApp.swift; sourceTree = "<group>"; };
 		D6FA6B672A2F3C03001EE159 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -81,6 +83,8 @@
 		D6FA6B592A2F3C03001EE159 = {
 			isa = PBXGroup;
 			children = (
+				D606ED862A315D1600A253D6 /* TodoAppDemo.png */,
+				D606ED852A315CA200A253D6 /* README.md */,
 				D6FA6B642A2F3C03001EE159 /* TodoApp */,
 				D6FA6B762A2F3C04001EE159 /* TodoAppTests */,
 				D6FA6B802A2F3C04001EE159 /* TodoAppUITests */,
