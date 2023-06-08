@@ -50,7 +50,7 @@ func outOfBounds(taskIndex: TaskIndex) -> String {
 
 class CommandHandler {
     
-    func readId(chars: [Character], index: Int) -> (Int, TaskIndex)? {
+    private static func readId(chars: [Character], index: Int) -> (Int, TaskIndex)? {
         if let scalar = chars[index].unicodeScalars.first {
             if (CharacterSet.decimalDigits.contains(scalar)) {
                 // digital index
