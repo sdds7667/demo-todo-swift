@@ -43,9 +43,11 @@ class TaskDataStore: ObservableObject  {
         }
     }
     
-    public func add(task: String) {
-        tasks.append(Task(id:UUID().uuidString.lowercased(), name: task, created: .now))
+    public func add(task: String) -> Task{
+        let newTask = Task(id:UUID().uuidString.lowercased(), name: task, created: .now)
+        tasks.append(newTask)
         save()
+        return newTask
     }
     
     public func sort() {
@@ -54,13 +56,28 @@ class TaskDataStore: ObservableObject  {
         }
     }
     
-    public func remove(id: String) {
-        if let index = tasks.firstIndex(where: {$0.id.elementsEqual(id)}) {
+    public func complete(task: Task) {
+        
+        if let index = tasks.firstIndex(where: {$0.id.elementsEqual(task.id)}) {
             let task = tasks[index]
             tasks.remove(at: index)
             finished.append(task)
             save()
         }
+    }
+    
+    public func remove(task: Task) -> Bool {
+        
+        if let index = tasks.firstIndex(where: {$0.id.elementsEqual(task.id)}) {
+            tasks.remove(at: index)
+            save()
+            return true;
+        } else if let index = finished.firstIndex(where: {$0.id.elementsEqual(task.id)}) {
+            finished.remove(at: index)
+            save()
+            return true;
+        }
+        return false;
     }
     
     
@@ -73,6 +90,12 @@ class TaskDataStore: ObservableObject  {
     
     public func idFromPrefix(prefix: String) -> String? {
         for task in tasks {
+            if (task.id.starts(with: prefix)) {
+                return task.id
+            }
+        }
+        
+        for task in finished {
             if (task.id.starts(with: prefix)) {
                 return task.id
             }
@@ -91,7 +114,12 @@ class TaskDataStore: ObservableObject  {
     
     public func taskFromIndex(index: TaskIndex) -> Task? {
         if let id = idFromTaskIndex(index: index) {
-            return tasks.first{task in task.id == id}
+            
+            if let task = (tasks.first{task in task.id == id}) {
+                return task
+            } else {
+                return finished.first{task in task.id == id}
+            }
         } else {
             return nil
         }
@@ -125,6 +153,63 @@ class TaskDataStore: ObservableObject  {
             print("\(error)")
         }
         
+    }
+    
+    private static func projectUrl(projectName: String) -> URL? {
+        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let fileUrl = dir.appendingPathComponent(projectName)
+            return fileUrl
+        }
+        return nil
+    }
+    
+    public func loadProject(projectName: String) -> Bool {
+        save()
+        if let newUrl = TaskDataStore.projectUrl(projectName: projectName) {
+            self.setUrl(url: newUrl)
+            print("\(newUrl)")
+            do {
+                let contents = try String(contentsOf: newUrl, encoding: .utf8);
+                load(jsonString: contents)
+                return true
+            } catch {
+                tasks = []
+                finished = []
+                return false
+            }
+        }
+        return false
+    }
+}
+
+class SettingsStore : Codable {
+    public var defaultProject = "default.json"
+    
+    public func load() {
+        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let fileUrl = dir.appendingPathComponent(".settings.json")
+            do {
+                let contents = Data(try String(contentsOf: fileUrl, encoding: .utf8).utf8);
+                let jdecoder = JSONDecoder()
+                let res = try jdecoder.decode(SettingsStore.self, from: contents)
+                self.defaultProject = res.defaultProject
+            } catch  {
+                let jencoder = JSONEncoder()
+                do {
+                    try jencoder.encode(self).write(to: fileUrl)
+                } catch {
+                    print("Couldn't write the settings file. ")
+                }
+            }
+        }
+    }
+    
+    private static func url(projectName: String) -> URL? {
+        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let fileUrl = dir.appendingPathComponent(projectName)
+            return fileUrl
+        }
+        return nil
     }
     
 }

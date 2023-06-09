@@ -14,56 +14,47 @@ struct ContentView: View {
     
     @ObservedObject var taskStore = TaskDataStore()
     @ObservedObject var messageStore = MessageStore()
+    @ObservedObject var commandHandler = CommandHandler()
     
     @State var newTask : String = ""
     @State var command: String = "";
     @State var commandInFocus: Bool = false;
+    @State var editNewName: String = ""
     var timer : Timer? = nil;
-    var commandHandler = CommandHandler()
     let font = Font.system(.body, design: .monospaced)
     var dateFormatter = DateFormatter()
     
     @Environment(\.colorScheme) var colorScheme
     
     init() {
+        
+        let settings = SettingsStore()
+        settings.load()
+        
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
-        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let fileUrl = dir.appendingPathComponent("data.json")
-            taskStore.setUrl(url: fileUrl)
-            
-            if FileManager.default.fileExists(atPath: fileUrl.path(percentEncoded: false)) {
-                do {
-                    let contents = try String(contentsOf: fileUrl, encoding: .utf8);
-                    taskStore.load(jsonString: contents)
-                } catch {
-                    messageStore.message = "Could not load the file"
-                }
-            } else {
-                print("File does not exist! \(fileUrl.absoluteString)")
-            }
-        }
+        _ = taskStore.loadProject(projectName: settings.defaultProject)
     }
     
     
     
     var body: some View {
             VStack {
-                    HStack {
-                        TextField ("Add Task: ", text: self.$newTask).font(font).onSubmit {
-                            addNewTask()
-                        }.focused($focus, equals: .newTask)
-                            .onChange(of: newTask, perform: {newValue in
-                                if (newValue == ":") {
-                                    newTask = "";
-                                    commandInFocus = true;
-                                    command = ""
-                                    focus = .command
-                                }
-                            })
-                        Button(action: self.addNewTask, label: {
-                            Text("Add New").font(font)
+                HStack {
+                    TextField ("Add Task: ", text: self.$newTask).font(font).onSubmit {
+                        addNewTask()
+                    }.focused($focus, equals: .newTask)
+                        .onChange(of: newTask, perform: {newValue in
+                            if (newValue == ":") {
+                                newTask = "";
+                                commandInFocus = true;
+                                command = ""
+                                focus = .command
+                            }
                         })
-                    }
+                    Button(action: self.addNewTask, label: {
+                        Text("Add New").font(font)
+                    })
+                }
                 ScrollView(.vertical) {
                     LazyVGrid(columns: [
                         GridItem(.fixed(30)),
@@ -76,14 +67,35 @@ struct ContentView: View {
                             
                             let id = String(task.id.dropLast(33)).lowercased()
                             let date = dateFormatter.string(from: task.created)
+                            
                             GridRow {
                                 Text("\(id)").foregroundColor(.secondary).font(font)
                                 Text("\(date)").font(font).foregroundColor(.secondary)
                                 Text("\(task.priority)").font(font).foregroundColor(.secondary)
-                                Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
+                                if (commandHandler.selectedTaskId != nil && id.elementsEqual(commandHandler.selectedTaskId!)) {
+                                    if (commandHandler.nameEditor) {
+                                        TextField("New Task Name", text:self.$editNewName).font(font).focused($focus, equals:.tableEditor)
+                                            .onSubmit {
+                                                self.editTaskName(task:task)
+                                                self.editNewName = ""
+                                                self.commandHandler.nameEditor = false
+                                                self.focus = .newTask
+                                                taskStore.save()
+                                            }.onExitCommand {
+                                            commandHandler.nameEditor = false
+                                            self.editNewName = ""
+                                        }
+                                    } else {
+                                        Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading).foregroundColor(Color.accentColor)
+                                    }
+
+                                }else {
+                                    Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
+                                }
                             }.onTapGesture {
-                                taskStore.remove(id: task.id)
+                                _ = taskStore.remove(task: task)
                             }
+                                
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: 300, alignment: .topLeading)
@@ -102,7 +114,12 @@ struct ContentView: View {
                                 Text("\(id)").foregroundColor(.secondary).font(font)
                                 Text("\(date)").font(font).foregroundColor(.secondary)
                                 Text("\(task.priority)").font(font).foregroundColor(.secondary)
-                                Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
+                                if (commandHandler.selectedTaskId != nil && id.elementsEqual(commandHandler.selectedTaskId!)) {
+                                    Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
+                                        .foregroundColor(.accentColor)
+                                } else {
+                                    Text("\(task.name)").frame(maxWidth: .infinity, alignment: .leading)
+                                }
                             }.strikethrough()
                         }
                     }.frame(maxWidth: .infinity, maxHeight: 300, alignment: .topLeading)
@@ -129,18 +146,32 @@ struct ContentView: View {
     func setFocus(newFocus: FocusedElement?) {
         focus = newFocus
         commandInFocus = newFocus == .command
+//        print("Focus changed. \(newFocus) -> \(focus) ")
+//        print("Command in focus: . \(commandInFocus)")
+    }
+    
+    
+    func editTaskName(task: Task) {
+        task.name = self.editNewName
+        
     }
     
     func handleCommand(){
-        let actionRunResult = commandHandler.parse(command: command).handle(taskStore: taskStore, messageStore: messageStore)
+        let actionRunResult = commandHandler.parse(command: command).handle(taskStore, messageStore, commandHandler)
         command = actionRunResult.command
         newTask = actionRunResult.task
-        setFocus(newFocus: actionRunResult.focus)
+        if let editString = actionRunResult.editNewName {
+            editNewName = editString
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+            setFocus(newFocus: actionRunResult.focus)
+        }
     }
     
     
     func addNewTask() {
-        self.taskStore.add(task: newTask)
+        let task = self.taskStore.add(task: newTask)
+        self.commandHandler.selectedTaskId = String(task.id.dropLast(33));
         newTask = "";
     }
 }
